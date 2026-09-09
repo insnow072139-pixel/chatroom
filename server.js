@@ -1,12 +1,14 @@
 import express from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
+import { randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
+
 app.use(express.static(path.join(__dirname, "dist")));
 
 app.get(/.*/, (req, res) => {
@@ -36,21 +38,27 @@ function broadcast(data, except = null) {
 }
 
 wss.on("connection", (ws) => {
-  const id = crypto.randomUUID();
+  const id = randomUUID();
+
+  // 이미 들어와 있던 사람들의 ID
+  const existingUsers = [...clients.keys()];
 
   clients.set(id, ws);
 
+  // 새로 들어온 사람에게 기존 사용자 목록 전달
   send(ws, {
     type: "welcome",
     id,
     users: clients.size,
-    roomName
+    roomName,
+    peers: existingUsers
   });
 
+  // 기존 사용자들에게 새 사람이 들어왔다고 알림
   broadcast({
     type: "users",
     count: clients.size
-  });
+  }, id);
 
   ws.on("message", (raw) => {
     let d;
@@ -108,7 +116,7 @@ wss.on("connection", (ws) => {
       });
     }
 
-    // WebRTC
+    // WebRTC 신호 전달
     if (["offer", "answer", "ice"].includes(d.type)) {
       const target = clients.get(d.target);
 
