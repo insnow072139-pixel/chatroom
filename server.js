@@ -24,7 +24,7 @@ wss.on("connection",ws=>{
   broadcast({type:"users",count:clients.size});
   ws.on("message",raw=>{
     let d; try{d=JSON.parse(raw)}catch{return}
-    if(d.type==="chat")broadcast({type:"chat",name:String(d.name||"익명"),text:String(d.text||"")});
+    if(d.type==="chat")broadcast({type:"chat",name:String(d.name||"익명"),text:String(d.text||"")},id);
     if(["offer","answer","ice"].includes(d.type)){
       const target=clients.get(d.target);
       if(target)send(target,{...d,senderId:id});
